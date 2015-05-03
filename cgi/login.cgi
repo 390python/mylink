@@ -70,18 +70,73 @@ def display_admin_options(user, session):
         <ul>
         <li> <a href="login.cgi?action=new-album&user={user}&session={session}">Create new album</a>
         <li> <a href="login.cgi?action=upload&user={user}&session={session}">Upload Picture</a>
-        <li> <a href="login.cgi?action=show_image&user={user}&session={session}&image=user1/image-102.jpg">Show Image</a>
+        <li> <a href="login.cgi?action=show_image&user={user}&session={session}&image=user1/test.jpg">Show Image</a>
         <li> Delete album
         <li> Make album public
-        <li> Change pasword
+        <li> <a href="changepassword.cgi?%user={user}"> Change pasword </a>
+        <li> <a href="edituser.cgi?%user={user}"> Change username </a>
         </ul>
+
+        <form action="login.cgi" method="get">
+        <input type="hidden" name="action" value="new-post" />
+        <input type="hidden" name="user" value="{user}" />
+        <input type="hidden" name="session" value="{session}" />
+        new post:<br>
+        <input type="text" name="content">
+        <br>
+        <input type="checkbox" name="circle" value="default">post to a circle<br>
+        <input type="submit" value="New Post">
+        </form>
+        <a href="login.cgi?action=home&user={user}&session={session}">Go home</a>
+
         """
         #Also set a session number in a hidden field so the
         #cgi can check that the user has been authenticated
 
     print_html_content_type()
     print(html.format(user=user,session=session))
+    display_posts( user )
+    
+    
+##########################################################
+# Diplay the text of a post
+def display_post( id ):
+    conn = mysql.connector.connect(user='root', password='!M@Y#S$Q%L', host='127.0.0.1', database='mylink')
+    c = conn.cursor()
 
+    t = (id,)
+    c.execute('SELECT * FROM posts WHERE id=%s', t)
+    row = c.fetchone()
+    poster = row[1]
+    postText = row[3]
+    html = "<br>"+ poster +"<br>"+ postText + "<br>"
+
+    print(html)
+    
+
+##########################################################
+# list post for this user
+def display_posts( user ):
+    conn = mysql.connector.connect(user='root', password='!M@Y#S$Q%L', host='127.0.0.1', database='mylink')
+    c = conn.cursor()
+
+    query = 'SELECT * FROM posts WHERE owner = "{user}"'.format(user=user)
+    t = (user,)
+    c.execute(query)#'SELECT * FROM posts WHERE owner = "%s"',t)
+    
+    numrows = c.rowcount
+    
+    #print(query + " " + str(numrows) )
+    
+    for x in range(0,numrows):
+        row = c.fetchone()
+        id = row[0]
+        display_post( id )
+    
+    ##conn.close()
+
+    
+    
 #################################################################
 def create_new_session(user):
     return session.create_session(user)
@@ -134,6 +189,38 @@ def new_album(form):
     conn.close()
     print_html_content_type()
     print(html.format(user=user,session=sid));
+    
+    
+##############################################################
+def new_post(form):
+    #Check session
+    if session.check_session(form) != "passed":
+        return
+        
+    conn = mysql.connector.connect(user='root', password='!M@Y#S$Q%L', host='127.0.0.1', database='mylink')
+    c = conn.cursor()
+
+    user = form["user"].value
+    content = form["content"].value
+    sid = form["session"].value
+    
+    circle = None;
+    if "circle" in form:    
+        circle = form["circle"].value
+        
+    t = (user,circle,content,)
+    c.execute('INSERT INTO posts VALUES ( DEFAULT, %s, %s, %s)', t)
+    conn.commit()
+
+    html="""
+    <H1>post successful</H1>
+    <a href="login.cgi?action=home&user={user}&session={session}">Go home</a>
+    """
+        
+    conn.close()
+    print_html_content_type()
+    print(html.format(user=user,session=sid));
+    
 
 ##############################################################
 def show_image(form):
@@ -228,6 +315,7 @@ def upload_pic_data(form):
         print_html_content_type()
         print('<H2>The picture ' + fileName + ' was uploaded successfully</H2>')
         print('<image src="'+image_url+'">')
+        print('<a href="login.cgi?action=home&user={user}&session={session}">Go home</a>'.format(user=user,session=s))
     else:
         message = 'No file was uploaded'
 
@@ -257,6 +345,8 @@ def main():
                    print("<H3><font color=\"red\">Incorrect user/password</font></H3>")
         elif (action == "new-album"):
             new_album(form)
+        elif (action == "new-post"):
+            new_post(form)
         elif (action == "upload"):
             upload(form)
         elif (action == "show_image"):

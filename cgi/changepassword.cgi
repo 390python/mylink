@@ -26,7 +26,8 @@ def password_screen():
 
 <TABLE BORDER = 0>
 <FORM METHOD=post ACTION="changepassword.cgi">
-<TR><TH>Old Password:</TH><TD><INPUT TYPE=text NAME="oldpass"></TD><TR>
+<TR><TH>Username:</TH><TD><INPUT TYPE=text NAME="user"></TD><TR>
+<TR><TH>Old Password:</TH><TD><INPUT TYPE=password NAME="oldpass"></TD><TR>
 <TR><TH>New Password:</TH><TD><INPUT TYPE=password NAME="password"></TD></TR>
 <TR><TH>Confirm Password:</TH><TD><INPUT TYPE=password NAME="confirm"></TD></TR>
 </TABLE>
@@ -81,9 +82,8 @@ def change_password(user,passwd):
     t = (user,)
     m = (passwd,)
     c.execute('UPDATE users SET password=%s WHERE email=%s', (passwd,user))
+    conn.commit()
     conn.close();
-
-
 
 
 
@@ -93,19 +93,28 @@ def main():
     form = cgi.FieldStorage()
     if "action" in form:
         action=form["action"].value
-        #print("action=",action)
         if action == "change":
-           password_screen()
-           if "oldpass" in form and "password" in form and "confirm" in form:
-               old=form["oldpass"].value
-               pw=form["password"].value
-               confirm=form["confirm"].value
-               if check_password(username, password)=="passed":
-                   if pw!=confirm:
-                       print("<H3>Passwords do not match!</H3>")
-                   else:
-                       change_password(user,password)
-                       print("<H3>Password successfully changed!</H3>")
+           #password_screen()
+            if "user" in form and "oldpass" in form and "password" in form and "confirm" in form:
+                username=form["user"].value
+                old=form["oldpass"].value
+                password=form["password"].value
+                confirm=form["confirm"].value
+                #if check_password(username, password)=="passed":
+                if password!=confirm:
+                     password_screen()
+                     print("<H3>Make sure your new passwords match!</H3>")
+                else:
+                    if check_password(username,old) == "passed":
+                        change_password(username,password)
+                        password_screen()
+                        print("<H3>Password successfully changed!</H3>")
+                    else:
+                        password_screen()
+                        print("<H3>Incorrect password!</H3>")
+            else:
+                password_screen()
+                print("<H3>Please fill out all the required forms!</H3>")
     else:
         password_screen()
 ###############################################################
